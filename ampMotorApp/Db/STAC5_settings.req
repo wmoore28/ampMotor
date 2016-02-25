@@ -1,0 +1,31 @@
+#
+# STAC5 Motor Settings
+#
+# Author: Wesley Moore (wmoore@jlab.org)
+# Date:   Oct 2013
+#
+# Enable/Disable
+$(P)$(R)ENB
+# Motor Dynamics
+$(P)$(R)VEL
+$(P)$(R)ACCL
+$(P)$(R)DECL
+$(P)$(R)ACCLMAX
+$(P)$(R)MRES
+$(P)$(R)PCUR
+$(P)$(R)ICUR
+$(P)$(R)MO
+# Inputs
+$(P)$(R)DEFLIM
+$(P)$(R)ASCL
+$(P)$(R)AOFF
+# Jogging/Homing
+$(P)$(R)JOGSIZ
+$(P)$(R)JOGDIR
+$(P)$(R)JOGPOS
+$(P)$(R)HOMEINP
+$(P)$(R)HOMETRG
+$(P)$(R)SRCHDIR
+$(P)$(R)SENSINP
+$(P)$(R)SENSTRG
+

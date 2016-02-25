@@ -1,0 +1,505 @@
+# 
+# DB for STAC5 stepper driver.
+# 
+# Notes:
+#   [Non-volatile memory]
+#   Many of the STAC5 settings are stored in it's non-volatile memory.  But, 
+#   most require a save to be issued.  To keep things simple, these settings 
+#   FLNK the save command to eliminate any user screw-ups.  
+#   
+#   [Jogging/Homing]
+#   One thing specially handled is the use of distance/position (DI).  Normal 
+#   use allows DI to be set and then issue a move based on that distance.  For 
+#   example, DI2000 followed by FL.  However, relative and absolute moves can 
+#   have the distance passed to them as a parameter (FL and FP).  The issue is,
+#   commands like "seek home (SH)" and "feed to sensor (FS)" use the sign of DI
+#   to determine their initial search direction.  In some cases this could be 
+#   bad.  So the solution was to strictly control DI with a switch as part of 
+#   the seek home and feed to sensor settings.  This seemed more logical since 
+#   we want to control which direction the motor is turning when we what to stop 
+#   at home or search for a particular sensor.  See SRCHDIR and DIR records.
+#
+#   [Protocols]
+#   Some of the ao records use bo protocols.  This is due to the STAC5 not 
+#   accepting floating point values for things like step positions.  The generic
+#   protocol file uses %f for ai/ao and %d for bi/bo.  There is also special 
+#   "No Init" protocols.  More details available within the protocol file.  The 
+#   parameters passed to the protocol are the actual STAC5 commands to be sent. 
+#   See the manual for all the gory details.  
+#
+#   [Macros]
+#   P     - standard record prefix
+#   R     - standard record prefix
+#   PORT  - asyn port name
+#
+# Author: Wesley Moore (wmoore@jlab.org)
+# Date:   Jun 2012
+#
+
+record(asyn,"$(P)$(R)Asyn") {
+    field(PORT, "$(PORT)")
+}
+
+record(ao, "$(P)$(R)ACCL") {
+    field(DESC, "Acceleration")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(AC) $(PORT)")
+    field(EGU,  "rps/s")
+    field(DRVL, "0.167")
+    field(DRVH, "5461.167")
+    field(PREC, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+# Used for stopping on limit switches or stop command.
+#   You likely want this to be the DRVH to prevent overshoots.
+record(ao, "$(P)$(R)ACCLMAX") {
+    field(DESC, "Max Acceleration")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(AM) $(PORT)")
+    field(EGU,  "rps/s")
+    field(DRVL, "0.167")
+    field(DRVH, "5461.167")
+    field(PREC, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+record(ao, "$(P)$(R)DECL") {
+    field(DESC, "Deceleration")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(DE) $(PORT)")
+    field(EGU,  "rps/s")
+    field(DRVL, "0.167")
+    field(DRVH, "5461.167")
+    field(PREC, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+record(mbbo, "$(P)$(R)DEFLIM") {
+    field(DESC, "Define LS conditions")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto bo(DL) $(PORT)")
+    field(ZRST, "End-of-travel LS (closed)")
+    field(ZRVL, "1")
+    field(ONST, "End-of-travel LS (open)")
+    field(ONVL, "2")
+    field(TWST, "General purpose inputs")
+    field(TWVL, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+# 4-digit hex value.  See "AL" command in manual for breakdown.
+record(ai, "$(P)$(R)ALM") {
+    field(DESC, "Alarm Code")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(AL) $(PORT)")
+    field(HIGH, "1")
+    field(HSV,  "MAJOR")
+    field(SCAN, "1 second")
+    field(FLNK, "$(P)$(R)OPENMTR")
+}
+
+record(calc, "$(P)$(R)OPENMTR") {
+    field(DESC, "Open Motor Winding?")
+    field(INPA, "$(P)$(R)ALM")
+    field(CALC, "A&&0x100")
+}
+
+record(bo, "$(P)$(R)ALMRST") {
+    field(DESC, "Alarm reset")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto cmdBtn(AR) $(PORT)")
+}
+
+#######################################
+# Analog Input
+#######################################
+record(mbbo, "$(P)$(R)ASCL") {
+    field(DESC, "Ain scale")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto bo(AS) $(PORT)")
+    field(ZRST, "single-ended +/-10V")
+    field(ZRVL, "0")
+    field(ONST, "single-ended 0-10V")
+    field(ONVL, "1")
+    field(TWST, "single-ended +/-5V")
+    field(TWVL, "2")
+    field(THST, "single-ended 0-5V")
+    field(THVL, "3")
+    field(FRST, "differential +/-10V")
+    field(FRVL, "4")
+    field(FVST, "differential 0-10V")
+    field(FVVL, "5")
+    field(SXST, "differential +/-5V")
+    field(SXVL, "6")
+    field(SVST, "differential 0-5V")
+    field(SVVL, "7")
+}
+record(ao, "$(P)$(R)AOFF") {
+    field(DESC, "Ain offset")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(AV) $(PORT)")
+    field(DRVL, "-10.000")
+    field(DRVH, "10.000")
+    field(PREC, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+record(ai, "$(P)$(R)AIN") {
+    field(DESC, "Ain")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(IA) $(PORT)")
+    field(PREC, "3")
+    field(SCAN, "1 second")
+}
+
+record(ai, "$(P)$(R)CURR") {
+    field(DESC, "Motor current")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(IC) $(PORT)")
+    field(EGU,  "amps")
+    field(PREC, "2")
+    field(SCAN, "1 second")
+}
+
+record(ai, "$(P)$(R)POS") {
+    field(DESC, "Motor position")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(IP) $(PORT)")
+    field(EGU,  "steps")
+    field(SCAN, "1 second")
+}
+
+# 8-digit binary value.  MSB=IN8, LSB=IN1.  See "IS" command in manual.
+record(stringin, "$(P)$(R)INP") {
+    field(DESC, "Input status")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto stringin(IS) $(PORT)")
+    field(SCAN, "1 second")
+}
+record(ai, "$(P)$(R)INPVAL") {
+    field(DESC, "Input status")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto bini(IS) $(PORT)")
+    field(SCAN, "1 second")
+    field(FLNK, "$(P)$(R)CWLIMIT.PROC")
+}
+record(sub, "$(P)$(R)CWLIMIT") {
+    field(INAM, "limitSubInit")
+    field(SNAM, "limitSub")
+    field(INPA, "$(P)$(R)DEFLIM")
+    field(INPB, "$(P)$(R)INPVAL")
+    field(INPC, "0x1")
+    field(FLNK, "$(P)$(R)CCWLIMIT.PROC")
+}
+record(sub, "$(P)$(R)CCWLIMIT") {
+    field(INAM, "limitSubInit")
+    field(SNAM, "limitSub")
+    field(INPA, "$(P)$(R)DEFLIM")
+    field(INPB, "$(P)$(R)INPVAL")
+    field(INPC, "0x2")
+    field(FLNK, "$(P)$(R)HOMELIMIT.PROC")
+}
+record(sub, "$(P)$(R)HOMELIMIT") {
+    field(INAM, "limitSubInit")
+    field(SNAM, "limitSub")
+    field(INPA, "$(P)$(R)DEFLIM")
+    field(INPB, "$(P)$(R)INPVAL")
+    field(INPC, "0x4")
+}
+
+# Board-mounted sensor, overtemp at 85C.
+record(ai, "$(P)$(R)TEMP") {
+    field(DESC, "Driver temperature")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(IT) $(PORT)")
+    field(PREC, "1")
+    field(LINR, "LINEAR")
+    field(ASLO, ".1")
+    field(EGU,  "C")
+    field(HIGH, "75")
+    field(HSV,  "MINOR")
+    field(HIHI, "80")
+    field(HHSV, "MAJOR")    
+    field(SCAN, "1 second")
+}
+
+record(mbbo, "$(P)$(R)ENB") {
+    field(DESC, "Disable/Enable motor")
+    field(ZRST, "Enable")
+    field(ONST, "Disable")
+    field(VAL,  "0")
+    field(FLNK, "$(P)$(R)ME")
+}
+record(scalcout, "$(P)$(R)ME") {
+    field(DESC, "Motor Enable/Disable")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto scalcout $(PORT)")
+    field(INPA, "$(P)$(R)ENB")
+    field(AA,   "ME")
+    field(BB,   "MD")
+    field(CALC, "A=0?AA:BB")
+}
+
+record(mbbo, "$(P)$(R)MRES") {
+    field(DESC, "Motor resolution")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto bo(MR) $(PORT)")
+    field(ZRST, "200")
+    field(ZRVL, "0")
+    field(ONST, "400")
+    field(ONVL, "1")
+    field(TWST, "2000")
+    field(TWVL, "3")
+    field(THST, "5000")
+    field(THVL, "4")
+    field(FRST, "10,000")
+    field(FRVL, "5")
+    field(FVST, "12,800")
+    field(FVVL, "6")
+    field(SXST, "18,000")
+    field(SXVL, "7")
+    field(SVST, "20,000")
+    field(SVVL, "8")
+    field(EIST, "21,600")
+    field(EIVL, "9")
+    field(NIST, "25,000")
+    field(NIVL, "10")
+    field(TEST, "25,400")
+    field(TEVL, "11")
+    field(ELST, "25,600")
+    field(ELVL, "12")
+    field(TVST, "36,000")
+    field(TVVL, "13")
+    field(TTST, "50,000")
+    field(TTVL, "14")
+    field(FTST, "50,800")
+    field(FTVL, "15")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+# Motion Output (MO)
+#   Motion output while moving.
+record(mbbo, "$(P)$(R)MO") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto setMotionOut $(PORT)")
+    field(ZRST, "Open")
+    field(ONST, "Closed")
+    field(TWST, "Not Used")
+    field(ZRVL, "1")
+    field(ONVL, "2")
+    field(TWVL, "3")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+# STAC5 changes idle current to 50% of peak.  So we reprocess ICUR as a 
+# work-around.  This STAC5 behavior seems to be undocumented.
+record(ao, "$(P)$(R)PCUR") {
+    field(DESC, "Peak current")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(PC) $(PORT)")
+    field(EGU,  "amps")
+    field(DRVL, "0")
+    field(DRVH, "5")
+    field(PREC, "2")
+    field(FLNK, "$(P)$(R)ICUR")
+}
+record(ao, "$(P)$(R)ICUR") {
+    field(DESC, "Idle current")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(PI) $(PORT)")
+    field(EGU,  "amps")
+    field(DRVL, "0")
+    field(DRVH, "5")
+    field(PREC, "2")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+# Restarts the drive.  See "RE" command in manual.
+record(bo, "$(P)$(R)REBOOT") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto cmdBtn(RE) $(PORT)")
+}
+
+# Save to non-volatile.
+record(bo, "$(P)$(R)SAVE") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto cmdBtn(SA) $(PORT)")
+}
+
+# 4-digit hex value.  See "SC" command in manual for breakdown.
+record(ai, "$(P)$(R)STAT") {
+    field(DESC, "Status code")
+    field(DTYP, "stream")
+    field(INP,  "@STAC5.proto ai(SC) $(PORT)")
+    field(SCAN, "1 second")
+}
+
+# !!! WARNING !!! 
+# Set current position (overrides the existing value in the STAC5)
+record(ao, "$(P)$(R)SETPOS") {
+    field(DESC, "Set current position")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto bo(SP) $(PORT)")
+    field(EGU,  "steps")
+    field(DRVL, "-2147483647")
+    field(DRVH, "2147483647")
+}
+
+record(bo, "$(P)$(R)STOP") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto cmdBtn(ST) $(PORT)")
+}
+
+record(ao, "$(P)$(R)VEL") {
+    field(DESC, "Speed/Velocity")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto ao(VE) $(PORT)")
+    field(EGU,  "rps")
+    field(LOPR, "0.0042")
+    field(HOPR, "80")
+    field(PREC, "4")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+
+#######################################
+# HOMING
+#  !!! WARNING !!!
+#  Homing with the STAC5 safely requires 3 limit switches.  CW/CCW 
+#  end-of-travel and a home switch.  Defined as X1=CW, X2=CCW, X3=home.
+#######################################
+# Direction to approach the switch.
+#   Only the direction selected will trigger a stop at the switch.
+record(bo, "$(P)$(R)SRCHDIR") {
+    field(ZNAM, "CW")
+    field(ONAM, "CCW")
+    field(FLNK, "$(P)$(R)DIR")
+#    info(autosaveFields, "VAL")
+}
+# DI command has to recieve integer value.
+record(calcout, "$(P)$(R)DIR") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto bo(DI) $(PORT)")
+    field(INPA,  "$(P)$(R)SRCHDIR")
+    field(CALC,  "A?-1:1")
+    field(FLNK, "$(P)$(R)SAVE")
+}
+record(mbbo, "$(P)$(R)HOMEINP") {
+    field(DESC, "Home input number")
+    field(ZRST, "X1/CW Limit")
+    field(ZRVL, "1")
+    field(ONST, "X2/CCW Limit")
+    field(ONVL, "2")
+    field(TWST, "X3/Home")
+    field(TWVL, "3")
+}
+record(mbbo, "$(P)$(R)HOMETRG") {
+    field(DESC, "Home trigger condition")
+    field(ZRST, "Low")
+    field(ZRVL, "0")
+    field(ONST, "High")
+    field(ONVL, "1")
+    field(TWST, "Falling Edge")
+    field(TWVL, "2")
+    field(THST, "Rising Edge")
+    field(THVL, "3")
+}
+# Use SEEKHOME.PROC as the go button.
+#   A is used in the protocol.
+#   B is translated to the letter representing the input condition (SVAL).
+record(scalcout, "$(P)$(R)SEEKHOME") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto seekHome $(PORT)")
+    field(INPA, "$(P)$(R)HOMEINP.RVAL")
+    field(INPB, "$(P)$(R)HOMETRG.RVAL")
+    field(AA,   "L")
+    field(BB,   "H")
+    field(CC,   "F")
+    field(DD,   "R")
+    field(EE,   "BAD")
+    field(CALC, "B=0?AA:B=1?BB:B=2?CC:B=3?DD:EE")
+}
+
+#######################################
+# JOGGING
+#######################################
+record(ai, "$(P)$(R)JOGSIZ") {
+}
+record(bo, "$(P)$(R)JOGDIR") {
+    field(ZNAM, "CW")
+    field(ONAM, "CCW")
+}
+# Use JOG.PROC as the jog button.
+record(calc, "$(P)$(R)JOG") {
+    field(INPA, "$(P)$(R)JOGDIR")
+    field(INPB, "$(P)$(R)JOGSIZ")
+    field(CALC, "A?B*-1:B")
+    field(FLNK, "$(P)$(R)FEEDLEN")
+}
+record(ao, "$(P)$(R)FEEDLEN") {
+    field(DESC, "Relative move")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto boNI(FL) $(PORT)")
+    field(DOL,  "$(P)$(R)JOG")
+    field(OMSL, "closed_loop")
+    field(EGU,  "steps")
+    field(LOPR, "-2147483647")
+    field(HOPR, "2147483647")
+}
+
+# Absolute position
+#   Use FEEDPOS.PROC as the go button.
+record(ai, "$(P)$(R)JOGPOS") {
+}
+record(ao, "$(P)$(R)FEEDPOS") {
+    field(DESC, "Absolute move")
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto boNI(FP) $(PORT)")
+    field(DOL,  "$(P)$(R)JOGPOS")
+    field(OMSL, "closed_loop")
+    field(EGU,  "steps")
+    field(LOPR, "-2147483647")
+    field(HOPR, "2147483647")
+}
+
+#######################################
+# Feed to Sensor (FS) takes two settings, ex. FS1L.
+# See also SRCHDIR and DIR.
+#   SENSINP - the input number 
+#   SENSTRG - the input condition
+#######################################
+record(mbbo, "$(P)$(R)SENSINP") {
+    field(DESC, "Sensor input number")
+    field(ZRST, "X1/CW Limit")
+    field(ZRVL, "1")
+    field(ONST, "X2/CCW Limit")
+    field(ONVL, "2")
+    field(TWST, "X3/Home")
+    field(TWVL, "3")
+}
+record(mbbo, "$(P)$(R)SENSTRG") {
+    field(DESC, "Sensor trigger condition")
+    field(ZRST, "Low")
+    field(ZRVL, "0")
+    field(ONST, "High")
+    field(ONVL, "1")
+    field(TWST, "Falling Edge")
+    field(TWVL, "2")
+    field(THST, "Rising Edge")
+    field(THVL, "3")
+}
+# Use FEEDSENS.PROC as the go button.
+#   A is used in the protocol.
+#   B is translated to the letter representing the input condition (SVAL).
+record(scalcout, "$(P)$(R)FEEDSENS") {
+    field(DTYP, "stream")
+    field(OUT,  "@STAC5.proto feedSens $(PORT)")
+    field(INPA, "$(P)$(R)SENSINP.RVAL")
+    field(INPB, "$(P)$(R)SENSTRG.RVAL")
+    field(AA,   "L")
+    field(BB,   "H")
+    field(CC,   "F")
+    field(DD,   "R")
+    field(EE,   "BAD")
+    field(CALC, "B=0?AA:B=1?BB:B=2?CC:B=3?DD:EE")
+}
+

@@ -1,0 +1,34 @@
+README_STAC5
+
+--------------------------------------------------------------------------------
+This file is targeted toward precautions when using the STAC5.  More details are
+in the db files, etc.  
+
+Power Loss/Reboot
+    * There is still a bit of a hiccup in power loss situations.  The STAC5, 
+      like most other controllers, always starts up with a 0 step count.  On the
+      TODO list is to impliment a monitoring sequencer to track for COMM lost 
+      and a 0 step count.  A record position could then be pushed to the 
+      controller using set position (SP).  This is likely to be a quite qwerky 
+      and I haven't had time to start on it.
+
+Alarm Code
+    * The alarm code on the STAC5 latches in between moves.  So be careful where
+      you display this information.
+    
+    * Don't be surprised if Over Temp, Over Voltage, Under Voltage, Over 
+      Current, Open Motor Winding, and Bad Encoder are faulted after certain 
+      conditions.  It seems to be it's normal response to things like requesting
+      a move while the motor is disabled.  Almost like what some call a P1 
+      fault.
+      
+Seek Home/Feed to Sensor
+    * DO NOT take this commands lightly.  
+    
+    * Seek home should only be used if CW, CCW, and Home switches are present.  
+      Otherwise, bad things can happen.
+      
+    * Feed to Sensor can be used for Homing if only CW and CCW switches are 
+      available, but use caution when configuring.
+      
+    * See manual and DB file for more details on usage.

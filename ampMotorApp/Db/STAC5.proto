@@ -1,0 +1,109 @@
+# STAC5.proto
+#
+# Applied Motion Products STAC5 stepper drive
+# 
+# This protocol file is fairly generic.  The DB for STAC5 shows the actual 
+# commands that are being called.  I found that this was more self-documenting.
+# 
+# [Special Cases]
+#   *NI      - stands for No Init.  Some values we don't want initialized from 
+#              hardware and it also prevents initialization errors for commands 
+#              that don't have readbacks.
+#   bini     - binary input
+#   cmdBtn   - use for buttons that send only a command, no value
+#   seekHome - the SH command takes two inputs, an int and a string (uses 
+#              scalcout).
+#   feedSens - the FS command takes two inputs, an int and a string (uses 
+#              scalcout).
+# 
+# Author: Wesley Moore (wmoore@jlab.org)
+# Date:   Jun 2012
+#
+
+Terminator = CR;
+PREFIX     = \x00\x07;
+
+
+ai {
+    out "\${PREFIX}\$1";
+    in  "\${PREFIX}\$1=%f";
+}
+
+ao {
+    out "\${PREFIX}\$1%f";
+    @init { out "\${PREFIX}\$1"; in "\${PREFIX}\$1=%f"; }
+}
+
+aoNI {
+    out "\${PREFIX}\$1%f";
+}
+
+# Use bi/bo for integer values (ex. mbbi/mbbo).
+bi {
+    out "\${PREFIX}\$1";
+    in  "\${PREFIX}\$1=%d";
+}
+
+bo {
+    out "\${PREFIX}\$1%d";
+    @init { out "\${PREFIX}\$1"; in "\${PREFIX}\$1=%d"; }
+}
+
+boNI {
+    out "\${PREFIX}\$1%d";
+}
+
+scalcout {
+    out "\${PREFIX}%(SVAL)s";
+}
+
+stringin {
+    out "\${PREFIX}\$1";
+    in  "\${PREFIX}\$1=%s";
+}
+
+stringout {
+    out "\${PREFIX}\$1%s";
+    @init { out "\${PREFIX}\$1"; in "\${PREFIX}\$1=%s"; }
+}
+
+stringoutNI {
+    out "\${PREFIX}\$1%s";
+}
+
+#######################################
+# Speciality items
+########################################
+# Binary In
+bini {
+    out "\${PREFIX}\$1";
+    in  "\${PREFIX}\$1=%b";
+}
+
+# Just send $1, no value needed (used for command buttons).
+cmdBtn {
+    out "\${PREFIX}\$1";
+}
+
+# Motion Output (MO).
+# 1 - Output is closed (enerigized) when motor is not moving.
+# 2 - Output is open (de-enerigized) when motor is not moving.
+# 3 - Output is not used as a Motion Output.
+setMotionOut {
+    out "\${PREFIX}MO%d";
+}
+
+# Seek Home (SH).
+#   A - input number
+#   SVAL - input condition
+seekHome {
+    out "\${PREFIX}SH%(A)d%(SVAL)s";
+}
+
+# Feed to Sensor (FS).
+#   A - input number
+#   SVAL - input condition
+feedSens {
+    out "\${PREFIX}FS%(A)d%(SVAL)s";
+}
+

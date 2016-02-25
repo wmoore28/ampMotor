@@ -1,0 +1,9 @@
+#
+# STAC5 Motor Settings
+#
+# Author: Wesley Moore (wmoore@jlab.org)
+# Date:   Oct 2013
+#
+# !!! DO NOT RESTORE - FOR REFERENCE ONLY !!!
+$(P)$(R)POS
+
